@@ -1,0 +1,20 @@
+[package]
+name = "spacemouse-proxy"
+version = "0.1.0"
+edition = "2024"
+description = "WebSocket proxy for 3DConnexion SpaceMouse on macOS"
+license = "MIT"
+repository = "https://github.com/bimawa/spacemouse-proxy"
+keywords = ["spacemouse", "3dconnexion", "figma", "websocket", "macos"]
+categories = ["hardware-support"]
+readme = "README.md"
+
+[build-dependencies]
+
+[dependencies]
+futures-util = "0.3.31"
+libc = "0.2"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync", "net", "time"] }
+tokio-tungstenite = { version = "0.28.0", features = ["connect"] }
