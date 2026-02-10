@@ -304,7 +304,98 @@ fn install_signal_handlers() {
     }
 }
 
+const LAUNCHD_LABEL: &str = "com.spacemouse-proxy";
+
+fn launchd_plist_path() -> std::path::PathBuf {
+    let home = std::env::var("HOME").expect("HOME not set");
+    std::path::PathBuf::from(home)
+        .join("Library/LaunchAgents")
+        .join(format!("{LAUNCHD_LABEL}.plist"))
+}
+
+fn current_exe_path() -> String {
+    std::env::current_exe()
+        .expect("cannot resolve executable path")
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn install_service() {
+    let plist_path = launchd_plist_path();
+    let exe = current_exe_path();
+
+    let plist = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{LAUNCHD_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exe}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/spacemouse-proxy.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/spacemouse-proxy.log</string>
+</dict>
+</plist>
+"#
+    );
+
+    if let Some(parent) = plist_path.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+
+    std::fs::write(&plist_path, plist).expect("failed to write plist");
+
+    let status = std::process::Command::new("launchctl")
+        .args(["load", plist_path.to_str().unwrap()])
+        .status()
+        .expect("failed to run launchctl");
+
+    if status.success() {
+        eprintln!("Service installed and started.");
+        eprintln!("  plist: {}", plist_path.display());
+        eprintln!("  binary: {exe}");
+        eprintln!("  logs: /tmp/spacemouse-proxy.log");
+    } else {
+        eprintln!("launchctl load failed (exit code {:?})", status.code());
+        std::process::exit(1);
+    }
+}
+
+fn uninstall_service() {
+    let plist_path = launchd_plist_path();
+
+    if plist_path.exists() {
+        let _ = std::process::Command::new("launchctl")
+            .args(["unload", plist_path.to_str().unwrap()])
+            .status();
+        std::fs::remove_file(&plist_path).expect("failed to remove plist");
+        eprintln!("Service stopped and removed.");
+    } else {
+        eprintln!("Service not installed (no plist at {})", plist_path.display());
+    }
+}
+
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.iter().any(|a| a == "--install") {
+        install_service();
+        return;
+    }
+    if args.iter().any(|a| a == "--uninstall") {
+        uninstall_service();
+        return;
+    }
+
     eprintln!("spacemouse-proxy v{}", env!("CARGO_PKG_VERSION"));
     eprintln!("WebSocket: ws://127.0.0.1:{WS_PORT}");
     eprintln!("Waiting for Figma plugin to connect...\n");

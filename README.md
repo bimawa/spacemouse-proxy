@@ -28,6 +28,24 @@ The proxy starts a WebSocket server on `ws://127.0.0.1:18944` and automatically:
 
 The 3DConnexion driver is **never stopped or killed** — the proxy registers/unregisters as a client dynamically.
 
+## Run as a service
+
+Install as a launchd service to start automatically on login:
+
+```sh
+spacemouse-proxy --install
+```
+
+This creates a plist at `~/Library/LaunchAgents/com.spacemouse-proxy.plist`, starts the service immediately, and configures it to restart on crash.
+
+To stop and remove:
+
+```sh
+spacemouse-proxy --uninstall
+```
+
+Logs: `/tmp/spacemouse-proxy.log`
+
 ## How it works
 
 1. Connects to the 3DConnexion framework as a manual client
